@@ -55,6 +55,13 @@
   .gain { font-size: 13px; font-variant-numeric: tabular-nums; }
   .up { color: var(--good); } .down { color: var(--watch); } .bad { color: var(--alert); }
   .tags { margin-top: 2px; font-size: 12px; color: #9b6bd6; }
+  .photos { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; }
+  .photos img { width: 72px; height: 96px; object-fit: cover; border-radius: 8px; cursor: zoom-in; flex: none; }
+  .photos .cap { font-size: 12px; color: var(--muted); align-self: center; }
+  #viewer { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; place-items: center; z-index: 10; cursor: zoom-out; padding: 16px; }
+  #viewer.on { display: grid; }
+  #viewer img { max-width: 100%; max-height: 90vh; border-radius: 12px; }
+  #viewer div { color: #fff; text-align: center; margin-top: 8px; font-size: 14px; }
   .spans { display: flex; gap: 6px; margin: 12px 0 6px; flex-wrap: wrap; }
   .spans button { border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 8px;
                   padding: 4px 10px; font: inherit; font-size: 14px; cursor: pointer; }
@@ -90,8 +97,10 @@
 
   <div class="grid" id="list"></div>
 
+  <div id="viewer"><figure style="margin:0"><img alt=""><div></div></figure></div>
+
   <footer>
-    健康狀態只依體重趨勢判斷，不是醫療診斷。年齡是依體重與成長速度估計的大略值。點天竺鼠卡片可以看體重曲線。
+    健康狀態只依體重趨勢判斷，不是醫療診斷。年齡是依體重與成長速度估計的大略值。點天竺鼠卡片可以看體重曲線，點照片可以放大。只顯示今天秤重時拍的照片。
   </footer>
 </main>
 
@@ -132,13 +141,14 @@ function regression(points) {   // [{x, y}] → slope
   return { slope: points.reduce((s, p) => s + (p.x - mx) * (p.y - my), 0) / sxx, mx, my };
 }
 
-// ---- 體重增幅：比前次、比約 7 天前（5–9 天前那筆） ----
-function weightGain(days) {
-  if (!days.length) return null;
-  const last = days[days.length - 1], out = {};
-  if (days.length >= 2) { const p = days[days.length - 2]; out.prev = Math.round(last.grams - p.grams); out.ratio = (last.grams - p.grams) / p.grams; }
-  const ref = days.slice(0, -1).reverse().find(d => { const n = Math.round((last.day - d.day) / DAY); return n >= 5 && n <= 9; });
-  if (ref) out.week = Math.round(last.grams - ref.grams);
+// ---- 體重增幅：最新一筆比前一筆（同一天秤兩次也算）；比約 7 天前（5–9 天前那天的第一筆） ----
+function weightGain(rows, days) {
+  if (!rows.length) return null;
+  const last = rows[rows.length - 1], out = { latest: { grams: last.grams, at: new Date(last.measured_at) } };
+  if (rows.length >= 2) { const p = rows[rows.length - 2]; out.prev = last.grams - p.grams; out.ratio = (last.grams - p.grams) / p.grams; }
+  const lastDay = startOfDay(out.latest.at);
+  const ref = days.slice().reverse().find(d => { const n = Math.round((lastDay - d.day) / DAY); return n >= 5 && n <= 9; });
+  if (ref) out.week = last.grams - ref.grams;
   return out;
 }
 
@@ -327,10 +337,13 @@ function render() {
   list.innerHTML = shown.map(p => {
     const h = p.health, [emo, lab] = STATUS[h.status], sym = p.sex === "male" ? "♂" : "♀";
     const g = p.gain, gtxt = d => d === 0 ? "±0 g" : `${d > 0 ? "+" : ""}${d} g`;
-    const gainHtml = g && g.prev !== undefined
-      ? `<div class="gain ${g.ratio <= -0.03 ? "bad" : g.prev > 0 ? "up" : g.prev < 0 ? "down" : ""}">${g.prev > 0 ? "▲" : g.prev < 0 ? "▼" : "＝"} ${gtxt(g.prev)}${g.prev ? ` (${pct(g.ratio)})` : ""}</div>` : "";
+    const gainHtml = !g ? "" : g.prev !== undefined
+      ? `<div class="gain ${g.ratio <= -0.03 ? "bad" : g.prev > 0 ? "up" : g.prev < 0 ? "down" : ""}">${g.prev > 0 ? "▲" : g.prev < 0 ? "▼" : "＝"} ${gtxt(g.prev)}${g.prev ? ` (${pct(g.ratio)})` : ""}</div>`
+      : `<div class="sub">第一筆</div>`;
     const weekHtml = g && g.week !== undefined ? `<div class="sub">7 天 ${gtxt(g.week)}</div>` : "";
-    const latest = h.latest ? `<b>${h.latest.grams}</b> g${gainHtml}<div class="sub">${fmtDate(h.latest.day)}</div>` : `<div class="sub">未秤</div>`;
+    const latest = g ? `<b>${g.latest.grams}</b> g${gainHtml}<div class="sub">${fmtDate(g.latest.at)}</div>` : `<div class="sub">未秤</div>`;
+    const photosHtml = p.photos.length ? `<div class="photos"><span class="cap">今天</span>${p.photos.map((ph, i) =>
+      `<img src="${ph.url}" alt="" data-i="${i}" title="${ph.grams} g">`).join("")}</div>` : "";
     const av = p.avatar ? `<img class="avatar" src="${p.avatar}" alt="">` : `<div class="avatar">${p.name.slice(0, 1)}</div>`;
     return `<div class="pig" data-id="${p.id}">
       <div class="top">${av}<div><div class="name">${p.name} <span class="${p.sex}">${sym}</span></div>
@@ -338,10 +351,19 @@ function render() {
         ${p.tagsAppearance.length ? `<div class="tags">${p.tagsAppearance.map(t => "#" + t).join(" ")}</div>` : ""}</div><div class="weight">${latest}</div></div>
       <span class="chip s-${h.status}">${emo} ${lab}</span>
       ${h.reasons.length && h.status !== "noData" ? `<div class="reasons">${h.reasons.join("・")}</div>` : ""}
+      ${photosHtml}
       <div class="detail"></div></div>`;
   }).join("") || `<div class="sub">沒有符合的天竺鼠。</div>`;
   list.querySelectorAll(".pig").forEach(el => el.addEventListener("click", e => {
     if (e.target.closest(".spans")) return;
+    const img = e.target.closest(".photos img");
+    if (img) {
+      const p = pigs.find(x => x.id === el.dataset.id), ph = p.photos[+img.dataset.i], v = document.getElementById("viewer");
+      v.querySelector("img").src = ph.url;
+      v.querySelector("div").textContent = `${p.name}・${ph.at.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })}・${ph.grams} g`;
+      v.classList.add("on");
+      return;
+    }
     const p = pigs.find(x => x.id === el.dataset.id), open = el.classList.toggle("open"), d = el.querySelector(".detail");
     if (!open) { charts.get(p.id)?.destroy(); d.innerHTML = ""; return; }
     d.innerHTML = `<div class="spans">${[["7", "7 天"], ["28", "4 週"], ["91", "3 個月"], ["all", "全部"]]
@@ -354,6 +376,8 @@ function render() {
   }));
 }
 
+document.getElementById("viewer").addEventListener("click", e => e.currentTarget.classList.remove("on"));
+
 document.getElementById("tabs").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   filter = b.dataset.f;
@@ -363,15 +387,18 @@ document.getElementById("tabs").addEventListener("click", e => {
 
 (async () => {
   try {
-    const [pigRows, weightRows] = await Promise.all([
+    const [pigRows, weightRows, photoRows] = await Promise.all([
       rest("public_pigs?select=*"),
       rest("public_weights?select=pig_id,measured_at,grams&order=measured_at&limit=20000"),
+      rest("public_today_photos?select=pig_id,measured_at,grams,photo_key&order=measured_at").catch(() => []),
     ]);
     pigs = await Promise.all(pigRows.map(async r => {
-      const days = dailyWeights(weightRows.filter(w => w.pig_id === r.id));
+      const rows = weightRows.filter(w => w.pig_id === r.id), days = dailyWeights(rows);
+      const photos = (await Promise.all(photoRows.filter(x => x.pig_id === r.id).map(async x =>
+        ({ url: await avatarURL(x.photo_key), grams: x.grams, at: new Date(x.measured_at) })))).filter(x => x.url);
       return { id: r.id, name: r.name, sex: r.sex, days, avatar: await avatarURL(r.avatar_key),
                age: r.birth_date ? null : estimateAge(days, r.sex), health: analyze(days, r.sex, r.birth_date, r.tags || []),
-               gain: weightGain(days), tagsAppearance: r.appearance_tags || [] };
+               gain: weightGain(rows, days), tagsAppearance: r.appearance_tags || [], photos };
     }));
     const last = weightRows.length ? new Date(weightRows[weightRows.length - 1].measured_at) : null;
     document.getElementById("updated").textContent =
