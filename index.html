@@ -52,6 +52,9 @@
   .s-alert { background: color-mix(in srgb, var(--alert) 15%, transparent); color: var(--alert); }
   .s-noData { background: color-mix(in srgb, var(--none) 15%, transparent); color: var(--none); }
   .reasons { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .gain { font-size: 13px; font-variant-numeric: tabular-nums; }
+  .up { color: var(--good); } .down { color: var(--watch); } .bad { color: var(--alert); }
+  .tags { margin-top: 2px; font-size: 12px; color: #9b6bd6; }
   .spans { display: flex; gap: 6px; margin: 12px 0 6px; flex-wrap: wrap; }
   .spans button { border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 8px;
                   padding: 4px 10px; font: inherit; font-size: 14px; cursor: pointer; }
@@ -127,6 +130,16 @@ function regression(points) {   // [{x, y}] → slope
   const sxx = points.reduce((s, p) => s + (p.x - mx) ** 2, 0);
   if (!sxx) return { slope: 0, mx, my };
   return { slope: points.reduce((s, p) => s + (p.x - mx) * (p.y - my), 0) / sxx, mx, my };
+}
+
+// ---- 體重增幅：比前次、比約 7 天前（5–9 天前那筆） ----
+function weightGain(days) {
+  if (!days.length) return null;
+  const last = days[days.length - 1], out = {};
+  if (days.length >= 2) { const p = days[days.length - 2]; out.prev = Math.round(last.grams - p.grams); out.ratio = (last.grams - p.grams) / p.grams; }
+  const ref = days.slice(0, -1).reverse().find(d => { const n = Math.round((last.day - d.day) / DAY); return n >= 5 && n <= 9; });
+  if (ref) out.week = Math.round(last.grams - ref.grams);
+  return out;
 }
 
 // ---- 年齡估計（與 App 的 AgeEstimator 相同） ----
@@ -276,8 +289,11 @@ function drawGroup() {
     options: { maintainAspectRatio: false, plugins: { legend: { labels: { color: css("--text") } } },
       scales: { x: { ticks: { color: css("--muted") } }, y: { ticks: { color: css("--muted") }, title: { display: true, text: "g", color: css("--muted") } } } },
   });
-  if (!labels.length) document.getElementById("group").parentElement.innerHTML =
-    `<div class="sub">累積 2 週以上的紀錄後，這裡會顯示公、母兩組的平均體重。</div>`;
+  if (!labels.length) {
+    const box = document.getElementById("group").parentElement;
+    box.style.height = "auto";
+    box.innerHTML = `<div class="sub">累積 2 週以上的紀錄後，這裡會顯示公、母兩組的平均體重。</div>`;
+  }
 }
 
 function drawPigChart(p, span) {
@@ -310,11 +326,16 @@ function render() {
   const list = document.getElementById("list");
   list.innerHTML = shown.map(p => {
     const h = p.health, [emo, lab] = STATUS[h.status], sym = p.sex === "male" ? "♂" : "♀";
-    const latest = h.latest ? `<b>${h.latest.grams}</b> g<div class="sub">${fmtDate(h.latest.day)}${h.change !== undefined ? `・${pct(h.change)}` : ""}</div>` : `<div class="sub">未秤</div>`;
+    const g = p.gain, gtxt = d => d === 0 ? "±0 g" : `${d > 0 ? "+" : ""}${d} g`;
+    const gainHtml = g && g.prev !== undefined
+      ? `<div class="gain ${g.ratio <= -0.03 ? "bad" : g.prev > 0 ? "up" : g.prev < 0 ? "down" : ""}">${g.prev > 0 ? "▲" : g.prev < 0 ? "▼" : "＝"} ${gtxt(g.prev)}${g.prev ? ` (${pct(g.ratio)})` : ""}</div>` : "";
+    const weekHtml = g && g.week !== undefined ? `<div class="sub">7 天 ${gtxt(g.week)}</div>` : "";
+    const latest = h.latest ? `<b>${h.latest.grams}</b> g${gainHtml}<div class="sub">${fmtDate(h.latest.day)}</div>` : `<div class="sub">未秤</div>`;
     const av = p.avatar ? `<img class="avatar" src="${p.avatar}" alt="">` : `<div class="avatar">${p.name.slice(0, 1)}</div>`;
     return `<div class="pig" data-id="${p.id}">
       <div class="top">${av}<div><div class="name">${p.name} <span class="${p.sex}">${sym}</span></div>
-        <div class="sub">${p.age ? p.age.text : ""}</div></div><div class="weight">${latest}</div></div>
+        <div class="sub">${p.age ? p.age.text : ""}</div>${weekHtml}
+        ${p.tagsAppearance.length ? `<div class="tags">${p.tagsAppearance.map(t => "#" + t).join(" ")}</div>` : ""}</div><div class="weight">${latest}</div></div>
       <span class="chip s-${h.status}">${emo} ${lab}</span>
       ${h.reasons.length && h.status !== "noData" ? `<div class="reasons">${h.reasons.join("・")}</div>` : ""}
       <div class="detail"></div></div>`;
@@ -349,7 +370,8 @@ document.getElementById("tabs").addEventListener("click", e => {
     pigs = await Promise.all(pigRows.map(async r => {
       const days = dailyWeights(weightRows.filter(w => w.pig_id === r.id));
       return { id: r.id, name: r.name, sex: r.sex, days, avatar: await avatarURL(r.avatar_key),
-               age: r.birth_date ? null : estimateAge(days, r.sex), health: analyze(days, r.sex, r.birth_date, r.tags || []) };
+               age: r.birth_date ? null : estimateAge(days, r.sex), health: analyze(days, r.sex, r.birth_date, r.tags || []),
+               gain: weightGain(days), tagsAppearance: r.appearance_tags || [] };
     }));
     const last = weightRows.length ? new Date(weightRows[weightRows.length - 1].measured_at) : null;
     document.getElementById("updated").textContent =
