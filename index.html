@@ -9,44 +9,72 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root {
-    --bg: #faf7f2; --card: #ffffff; --text: #2b2420; --muted: #7a6f66; --line: #ece4da;
-    --accent: #d9953e; --male: #3b82f6; --female: #ec4899;
-    --good: #22a35a; --watch: #d9a400; --alert: #dc3b3b; --none: #9a9a9a;
+    --bg: #f6f7f9; --card: #ffffff; --text: #1d2228; --muted: #6b7480; --line: #e3e7ec; --soft: #eef1f4;
+    --accent: #e08a2c; --male: #3b82f6; --female: #ec4899;
+    --good: #22a35a; --watch: #e09400; --alert: #dc3b3b; --none: #9aa3ad; --tag: #8b5cf6;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #1b1816; --card: #26221f; --text: #f1ebe4; --muted: #a89d93; --line: #3a342f;
+      --bg: #111417; --card: #1b1f24; --text: #eef1f4; --muted: #98a2ad; --line: #2b3138; --soft: #232830;
+      --accent: #ff9f0a; --good: #30c06e; --watch: #ffb020; --alert: #ff5a52; --tag: #a78bfa;
     }
   }
-  :root[data-theme="dark"] { --bg: #1b1816; --card: #26221f; --text: #f1ebe4; --muted: #a89d93; --line: #3a342f; }
+  :root[data-theme="dark"] { --bg: #111417; --card: #1b1f24; --text: #eef1f4; --muted: #98a2ad; --line: #2b3138; --soft: #232830;
+    --accent: #ff9f0a; --good: #30c06e; --watch: #ffb020; --alert: #ff5a52; --tag: #a78bfa; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
          font: 16px/1.5 -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", sans-serif; }
-  main { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; }
-  header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-  header img { width: 48px; height: 48px; border-radius: 12px; }
-  h1 { font-size: 24px; margin: 0; }
-  .sub { color: var(--muted); font-size: 14px; }
-  .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 16px 0; }
-  .summary div { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px; text-align: center; }
-  .summary b { display: block; font-size: 22px; }
-  .tabs { display: flex; gap: 6px; margin: 12px 0; }
-  .tabs button { flex: 1; border: 1px solid var(--line); background: var(--card); color: var(--text);
-                 border-radius: 999px; padding: 8px; font: inherit; cursor: pointer; }
-  .tabs button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin: 12px 0; }
-  .panel h2 { font-size: 16px; margin: 0 0 8px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
-  .pig { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; cursor: pointer; }
-  .pig.open { grid-column: 1 / -1; cursor: default; }
+  main { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  header img { width: 44px; height: 44px; border-radius: 12px; }
+  h1 { font-size: 22px; margin: 0; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin: 12px 0; }
+  .card h2 { font-size: 15px; margin: 0 0 10px; }
+  .overview { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; }
+  .ring { width: 84px; height: 84px; }
+  .big { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .headline { font-size: 15px; margin-top: 2px; }
+  .pills { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; grid-column: 1 / -1; }
+  .pill { border-radius: 12px; padding: 8px; text-align: center; background: var(--soft); color: var(--muted); font-size: 12px; }
+  .pill b { display: block; font-size: 20px; }
+  .pill.on.alert { background: color-mix(in srgb, var(--alert) 15%, transparent); color: var(--alert); }
+  .pill.on.watch { background: color-mix(in srgb, var(--watch) 18%, transparent); color: var(--watch); }
+  .pill.on.good { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .heat { overflow-x: auto; }
+  .hrow { display: flex; align-items: center; gap: 3px; margin: 3px 0; }
+  .hname { width: 64px; flex: none; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  .hname:hover { color: var(--accent); }
+  .cell { width: 14px; height: 14px; border-radius: 3px; flex: none; background: var(--soft); }
+  .hday { width: 14px; flex: none; font-size: 9px; color: var(--muted); text-align: center; }
+  .c-up { background: color-mix(in srgb, var(--good) 85%, transparent); }
+  .c-flat { background: color-mix(in srgb, var(--good) 45%, transparent); }
+  .c-dip { background: var(--watch); }
+  .c-drop { background: var(--alert); }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .rank div.r { display: flex; align-items: center; gap: 8px; padding: 6px 0; cursor: pointer; border-top: 1px solid var(--line); font-size: 14px; }
+  .rank div.r:first-of-type { border-top: 0; }
+  .rank .v { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .mini { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: var(--soft); display: grid; place-items: center; font-size: 12px; flex: none; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 4px; }
+  .tools input, .tools select { font: inherit; font-size: 14px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
+  .tools input { flex: 1; min-width: 160px; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { border: 0; background: var(--card); color: var(--text); padding: 8px 14px; font: inherit; font-size: 14px; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; margin-top: 12px; }
+  .pig { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; cursor: pointer; transition: border-color .15s; }
+  .pig:hover { border-color: var(--accent); }
   .top { display: flex; gap: 12px; align-items: center; }
   .avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex: none;
-            display: grid; place-items: center; font-weight: 700; font-size: 22px; background: var(--line); }
-  .name { font-weight: 700; font-size: 18px; }
+            display: grid; place-items: center; font-weight: 700; font-size: 22px; background: var(--soft); }
+  .name { font-weight: 700; font-size: 17px; }
   .male { color: var(--male); } .female { color: var(--female); }
   .weight { margin-left: auto; text-align: right; }
-  .weight b { font-size: 22px; }
-  .chip { display: inline-block; font-size: 13px; padding: 2px 8px; border-radius: 999px; margin: 6px 4px 0 0; }
+  .weight b { font-size: 22px; font-variant-numeric: tabular-nums; }
+  .chip { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; margin: 8px 4px 0 0; }
   .s-good { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
   .s-watch { background: color-mix(in srgb, var(--watch) 18%, transparent); color: var(--watch); }
   .s-alert { background: color-mix(in srgb, var(--alert) 15%, transparent); color: var(--alert); }
@@ -54,7 +82,8 @@
   .reasons { font-size: 13px; color: var(--muted); margin-top: 4px; }
   .gain { font-size: 13px; font-variant-numeric: tabular-nums; }
   .up { color: var(--good); } .down { color: var(--watch); } .bad { color: var(--alert); }
-  .tags { margin-top: 2px; font-size: 12px; color: #9b6bd6; }
+  .tags { margin-top: 2px; font-size: 12px; color: var(--tag); }
+  .spark { width: 100%; height: 34px; margin-top: 8px; display: block; }
   .photos { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; }
   .photos img { width: 72px; height: 96px; object-fit: cover; border-radius: 8px; cursor: zoom-in; flex: none; }
   .photos .cap { font-size: 12px; color: var(--muted); align-self: center; }
@@ -62,14 +91,31 @@
   #viewer.on { display: grid; }
   #viewer img { max-width: 100%; max-height: 90vh; border-radius: 12px; }
   #viewer div { color: #fff; text-align: center; margin-top: 8px; font-size: 14px; }
-  .spans { display: flex; gap: 6px; margin: 12px 0 6px; flex-wrap: wrap; }
+  .back { border: 0; background: none; color: var(--accent); font: inherit; font-size: 15px; padding: 4px 0; cursor: pointer; }
+  .hero { display: flex; gap: 16px; align-items: center; }
+  .hero .avatar { width: 88px; height: 88px; font-size: 34px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+  .stat { background: var(--soft); border-radius: 12px; padding: 10px; }
+  .stat b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  .spans { display: flex; gap: 6px; margin: 0 0 8px; flex-wrap: wrap; }
   .spans button { border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 8px;
                   padding: 4px 10px; font: inherit; font-size: 14px; cursor: pointer; }
   .spans button.on { border-color: var(--accent); color: var(--accent); }
-  .chartbox { position: relative; height: 240px; }
+  .chartbox { position: relative; height: 260px; }
   footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
   .err { color: var(--alert); }
-  @media (max-width: 480px) { .summary { grid-template-columns: repeat(2, 1fr); } }
+  .hidden { display: none; }
+  /* 深色模式：彩色半透明底疊在深色上會變成棕色 → 改成中性灰底＋彩色外框 */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .pill.on, :root:not([data-theme="light"]) .chip { background: var(--soft); border: 1px solid currentColor; }
+  }
+  :root[data-theme="dark"] .pill.on, :root[data-theme="dark"] .chip { background: var(--soft); border: 1px solid currentColor; }
+  @media (max-width: 640px) {
+    .two { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .pills { grid-template-columns: repeat(2, 1fr); }
+  }
 </style>
 </head>
 <body>
@@ -82,25 +128,61 @@
     </div>
   </header>
 
-  <div class="summary" id="summary"></div>
+  <section id="home">
+    <div class="card overview">
+      <svg class="ring" viewBox="0 0 36 36" aria-hidden="true">
+        <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--soft)" stroke-width="4"/>
+        <circle id="ringArc" cx="18" cy="18" r="15.5" fill="none" stroke="var(--accent)" stroke-width="4"
+                stroke-linecap="round" stroke-dasharray="0 100" transform="rotate(-90 18 18)" pathLength="100"/>
+      </svg>
+      <div>
+        <div class="sub">今天已秤</div>
+        <div class="big" id="todayCount">—</div>
+        <div class="headline" id="headline"></div>
+      </div>
+      <div class="pills" id="pills"></div>
+    </div>
 
-  <div class="tabs" id="tabs">
-    <button data-f="all" class="on">全部</button>
-    <button data-f="male">公</button>
-    <button data-f="female">母</button>
-  </div>
+    <div class="card">
+      <h2>最近 3 週・每天的體重變化</h2>
+      <div class="heat" id="heat"></div>
+      <div class="legend">
+        <span><i class="c-up"></i>增加</span><span><i class="c-flat"></i>持平</span>
+        <span><i class="c-dip"></i>降 2–5%</span><span><i class="c-drop"></i>降 5% 以上</span>
+        <span><i style="background:var(--soft)"></i>沒秤</span>
+      </div>
+    </div>
 
-  <div class="panel">
-    <h2>公／母每週平均體重（近 12 週）</h2>
-    <div class="chartbox"><canvas id="group"></canvas></div>
-  </div>
+    <div class="two">
+      <div class="card rank"><h2>7 天增加最多</h2><div id="rankUp"></div></div>
+      <div class="card rank"><h2>7 天減少最多</h2><div id="rankDown"></div></div>
+    </div>
 
-  <div class="grid" id="list"></div>
+    <div class="card">
+      <h2>公／母每週平均體重（近 12 週）</h2>
+      <div class="chartbox"><canvas id="group"></canvas></div>
+    </div>
+
+    <div class="tools">
+      <input id="search" type="search" placeholder="搜尋名字或標籤，例如「白」「三色」">
+      <div class="seg" id="sexSeg"><button data-f="all" class="on">全部</button><button data-f="male">公</button><button data-f="female">母</button></div>
+      <select id="sort" aria-label="排序">
+        <option value="status">依健康狀態</option>
+        <option value="name">依名字</option>
+        <option value="heavy">依體重（重到輕）</option>
+        <option value="light">依體重（輕到重）</option>
+        <option value="week">依 7 天變化</option>
+      </select>
+    </div>
+    <div class="grid" id="list"></div>
+  </section>
+
+  <section id="detail" class="hidden"></section>
 
   <div id="viewer"><figure style="margin:0"><img alt=""><div></div></figure></div>
 
   <footer>
-    健康狀態只依體重趨勢判斷，不是醫療診斷。年齡是依體重與成長速度估計的大略值。點天竺鼠卡片可以看體重曲線，點照片可以放大。只顯示今天秤重時拍的照片。
+    健康狀態只依體重趨勢判斷，不是醫療診斷。年齡是依體重與成長速度估計的大略值。只顯示今天秤重時拍的照片。
   </footer>
 </main>
 
@@ -254,7 +336,8 @@ function analyze(days, sex, birthDate, tags) {
 
 const STATUS = { alert: ["🔴", "警示"], watch: ["🟡", "注意"], good: ["🟢", "良好"], noData: ["⚪️", "資料不足"] };
 
-// ---- 頭貼（只有頭貼資料夾開放讀取） ----
+
+// ---- 頭貼與照片（只開放頭貼與今天的秤重照片） ----
 async function avatarURL(key) {
   if (!key) return null;
   try {
@@ -263,10 +346,12 @@ async function avatarURL(key) {
   } catch { return null; }
 }
 
-// ---- 畫面 ----
-let pigs = [], filter = "all", groupChart = null;
-const charts = new Map();
+let pigs = [], filter = "all", query = "", sortBy = "status", groupChart = null, pigChart = null;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const gtxt = d => d === 0 ? "±0 g" : `${d > 0 ? "+" : ""}${d} g`;
+const avatarHtml = (p, cls = "avatar") => p.avatar ? `<img class="${cls}" src="${p.avatar}" alt="">` : `<div class="${cls}">${esc(p.name.slice(0, 1))}</div>`;
+const ORDER = ["alert", "watch", "noData", "good"];
 
 function weeklyStats(days) {
   const m = new Map();
@@ -276,6 +361,75 @@ function weeklyStats(days) {
   }
   return [...m.entries()].sort((a, b) => a[0] - b[0]).map(([k, g]) => ({
     week: new Date(k), mean: g.reduce((s, v) => s + v, 0) / g.length, min: Math.min(...g), max: Math.max(...g) }));
+}
+
+// 牠自己的正常範圍：最近 14 天（至少 3 天）的中位數 ±3%
+function normalBand(days) {
+  if (!days.length) return null;
+  const last = days[days.length - 1].day, v = days.filter(d => last - d.day <= 14 * DAY).map(d => d.grams).sort((a, b) => a - b);
+  if (v.length < 3) return null;
+  const mid = v[Math.floor(v.length / 2)];
+  return { lo: mid * 0.97, hi: mid * 1.03, mid };
+}
+
+function weekChange(p) {
+  const g = p.gain; if (!g || g.week === undefined) return null;
+  const base = g.latest.grams - g.week; return base > 0 ? { d: g.week, r: g.week / base } : null;
+}
+
+// ---- 總覽 ----
+function renderOverview() {
+  const today = startOfDay(new Date()).getTime();
+  const done = pigs.filter(p => p.days.length && p.days[p.days.length - 1].day.getTime() === today).length;
+  document.getElementById("todayCount").innerHTML = `${done}<span class="sub" style="font-size:16px;font-weight:400"> ／ ${pigs.length} 隻</span>`;
+  document.getElementById("ringArc").setAttribute("stroke-dasharray", `${pigs.length ? done / pigs.length * 100 : 0} 100`);
+  const count = s => pigs.filter(p => p.health.status === s).length;
+  const alert = count("alert"), watch = count("watch");
+  let drop = null;
+  for (const p of pigs) {
+    const d = p.days; if (d.length < 2) continue;
+    const last = d[d.length - 1], ref = d.slice(0, -1).reverse().find(x => last.day - x.day <= 3 * DAY) || d[d.length - 2];
+    const r = (last.grams - ref.grams) / ref.grams;
+    if (r <= -0.02 && (!drop || r < drop.r)) drop = { p, r };
+  }
+  const parts = [alert ? `${alert} 隻需要注意健康` : watch ? `${watch} 隻要多留意` : "大家體重都穩定"];
+  if (drop) parts.push(`${drop.p.name} 近 3 天 ${pct(drop.r)}`);
+  const h = document.getElementById("headline");
+  h.textContent = parts.join("，");
+  h.style.color = alert ? css("--alert") : watch ? css("--watch") : css("--good");
+  document.getElementById("pills").innerHTML = ["alert", "watch", "good", "noData"].map(s =>
+    `<div class="pill ${s} ${count(s) ? "on" : ""}"><b>${count(s)}</b>${STATUS[s][1]}</div>`).join("");
+}
+
+function renderHeatmap() {
+  const today = startOfDay(new Date()), N = 21;
+  const dates = Array.from({ length: N }, (_, i) => new Date(today - (N - 1 - i) * DAY));
+  const head = `<div class="hrow"><div class="hname"></div>${dates.map(d => `<div class="hday">${d.getDate()}</div>`).join("")}</div>`;
+  const rows = pigs.slice().sort((a, b) => a.name.localeCompare(b.name, "zh-Hant")).map(p => {
+    const by = new Map(p.days.map(d => [d.day.getTime(), d.grams]));
+    const cells = dates.map(d => {
+      const g = by.get(d.getTime());
+      if (g === undefined) return `<div class="cell" title="${fmtDate(d)} 沒秤"></div>`;
+      const prev = p.days.filter(x => x.day < d).pop();
+      let c = "c-flat", r = 0;
+      if (prev) { r = (g - prev.grams) / prev.grams; c = r <= -0.05 ? "c-drop" : r <= -0.02 ? "c-dip" : r > 0.01 ? "c-up" : "c-flat"; }
+      return `<div class="cell ${c}" title="${fmtDate(d)}　${g} g${prev ? `（${pct(r)}）` : ""}"></div>`;
+    }).join("");
+    return `<div class="hrow"><div class="hname" data-id="${p.id}">${esc(p.name)}</div>${cells}</div>`;
+  }).join("");
+  const heat = document.getElementById("heat");
+  heat.innerHTML = head + rows;
+  heat.scrollLeft = heat.scrollWidth;   // 手機上預設捲到最近幾天
+}
+
+function renderRanking() {
+  const list = pigs.map(p => ({ p, w: weekChange(p) })).filter(x => x.w).sort((a, b) => b.w.r - a.w.r);
+  const row = x => `<div class="r" data-id="${x.p.id}">${avatarHtml(x.p, "mini")}<span>${esc(x.p.name)}</span>
+    <span class="v ${x.w.d > 0 ? "up" : x.w.r <= -0.05 ? "bad" : "down"}">${gtxt(x.w.d)}（${pct(x.w.r)}）</span></div>`;
+  const up = list.filter(x => x.w.d > 0).slice(0, 3), down = list.filter(x => x.w.d < 0).reverse().slice(0, 3);
+  const empty = `<div class="sub">累積一週以上的紀錄後會顯示。</div>`;
+  document.getElementById("rankUp").innerHTML = up.map(row).join("") || empty;
+  document.getElementById("rankDown").innerHTML = down.map(row).join("") || empty;
 }
 
 function drawGroup() {
@@ -289,101 +443,144 @@ function drawGroup() {
   };
   const male = series("male"), female = series("female");
   const labels = [...new Set([...male, ...female].sort((a, b) => a.k - b.k).map(p => p.x))];
+  const box = document.getElementById("group").parentElement;
+  if (!labels.length) { box.style.height = "auto"; box.innerHTML = `<div class="sub">累積 2 週以上的紀錄後，這裡會顯示公、母兩組的平均體重。</div>`; return; }
   const align = s => labels.map(l => s.find(p => p.x === l)?.y ?? null);
   groupChart?.destroy();
-  groupChart = new Chart(document.getElementById("group"), {
-    type: "line",
+  groupChart = new Chart(document.getElementById("group"), { type: "line",
     data: { labels, datasets: [
       { label: "公", data: align(male), borderColor: css("--male"), backgroundColor: css("--male"), spanGaps: true },
       { label: "母", data: align(female), borderColor: css("--female"), backgroundColor: css("--female"), spanGaps: true } ] },
-    options: { maintainAspectRatio: false, plugins: { legend: { labels: { color: css("--text") } } },
-      scales: { x: { ticks: { color: css("--muted") } }, y: { ticks: { color: css("--muted") }, title: { display: true, text: "g", color: css("--muted") } } } },
-  });
-  if (!labels.length) {
-    const box = document.getElementById("group").parentElement;
-    box.style.height = "auto";
-    box.innerHTML = `<div class="sub">累積 2 週以上的紀錄後，這裡會顯示公、母兩組的平均體重。</div>`;
-  }
+    options: chartOptions() });
+}
+
+function chartOptions(extra = {}) {
+  return { maintainAspectRatio: false, plugins: { legend: { labels: { color: css("--text") } }, ...extra.plugins },
+    scales: { x: { ticks: { color: css("--muted") }, grid: { color: css("--line") } },
+              y: { ticks: { color: css("--muted") }, grid: { color: css("--line") }, title: { display: true, text: "g", color: css("--muted") } } } };
+}
+
+function sparkline(p) {
+  const d = p.days.filter(x => x.day >= new Date(Date.now() - 28 * DAY));
+  if (d.length < 2) return "";
+  const v = d.map(x => x.grams), lo = Math.min(...v), hi = Math.max(...v), span = Math.max(1, hi - lo);
+  const pts = d.map((x, i) => `${(i / (d.length - 1) * 100).toFixed(1)},${(30 - (x.grams - lo) / span * 26 - 2).toFixed(1)}`).join(" ");
+  return `<svg class="spark" viewBox="0 0 100 32" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function renderList() {
+  const q = query.trim().toLowerCase();
+  const shown = pigs.filter(p => (filter === "all" || p.sex === filter) &&
+      (!q || p.name.toLowerCase().includes(q) || p.tagsAppearance.some(t => t.includes(q))))
+    .sort((a, b) => {
+      const wa = a.gain?.latest.grams ?? -1, wb = b.gain?.latest.grams ?? -1;
+      if (sortBy === "name") return a.name.localeCompare(b.name, "zh-Hant");
+      if (sortBy === "heavy") return wb - wa;
+      if (sortBy === "light") return (wa < 0 ? 1e9 : wa) - (wb < 0 ? 1e9 : wb);
+      if (sortBy === "week") return (weekChange(a)?.r ?? 9) - (weekChange(b)?.r ?? 9);
+      return ORDER.indexOf(a.health.status) - ORDER.indexOf(b.health.status) || a.name.localeCompare(b.name, "zh-Hant");
+    });
+  document.getElementById("list").innerHTML = shown.map(p => {
+    const h = p.health, [emo, lab] = STATUS[h.status], sym = p.sex === "male" ? "♂" : "♀", g = p.gain;
+    const gainHtml = !g ? "" : g.prev !== undefined
+      ? `<div class="gain ${g.ratio <= -0.03 ? "bad" : g.prev > 0 ? "up" : g.prev < 0 ? "down" : ""}">${g.prev > 0 ? "▲" : g.prev < 0 ? "▼" : "＝"} ${gtxt(g.prev)}</div>`
+      : `<div class="sub">第一筆</div>`;
+    const latest = g ? `<b>${g.latest.grams}</b> g${gainHtml}` : `<div class="sub">未秤</div>`;
+    return `<div class="pig" data-id="${p.id}">
+      <div class="top">${avatarHtml(p)}<div><div class="name">${esc(p.name)} <span class="${p.sex}">${sym}</span></div>
+        <div class="sub">${p.age ? p.age.text : ""}</div>
+        ${p.tagsAppearance.length ? `<div class="tags">${p.tagsAppearance.map(t => "#" + esc(t)).join(" ")}</div>` : ""}</div>
+        <div class="weight">${latest}</div></div>
+      ${sparkline(p)}
+      <span class="chip s-${h.status}">${emo} ${lab}</span>
+      ${h.reasons.length && h.status !== "noData" ? `<div class="reasons">${h.reasons.map(esc).join("・")}</div>` : ""}
+    </div>`;
+  }).join("") || `<div class="sub">沒有符合的天竺鼠。</div>`;
+}
+
+// ---- 個人頁（#pig=<id>） ----
+function renderDetail(p) {
+  const h = p.health, [emo, lab] = STATUS[h.status], g = p.gain, wc = weekChange(p);
+  const d = p.days, month = d.filter(x => x.day >= new Date(d.length ? d[d.length - 1].day - 30 * DAY : 0));
+  const m30 = month.length >= 2 ? month[month.length - 1].grams - month[0].grams : null;
+  const stat = (v, t, cls = "") => `<div class="stat"><b class="${cls}">${v}</b><span>${t}</span></div>`;
+  const el = document.getElementById("detail");
+  el.innerHTML = `<button class="back" id="back">‹ 回到全部</button>
+    <div class="card">
+      <div class="hero">${avatarHtml(p)}<div>
+        <div class="name" style="font-size:24px">${esc(p.name)} <span class="${p.sex}">${p.sex === "male" ? "♂" : "♀"}</span></div>
+        <div class="sub">${p.age ? p.age.text : ""}${p.days.length ? `・共 ${p.days.length} 天紀錄` : ""}</div>
+        ${p.tagsAppearance.length ? `<div class="tags">${p.tagsAppearance.map(t => "#" + esc(t)).join(" ")}</div>` : ""}
+        <span class="chip s-${h.status}">${emo} ${lab}</span></div></div>
+      ${h.reasons.length && h.status !== "noData" ? `<div class="reasons">${h.reasons.map(esc).join("・")}</div>` : ""}
+      <div class="stats">
+        ${stat(g ? `${g.latest.grams} g` : "—", g ? `最新（${fmtDate(g.latest.at)}）` : "最新")}
+        ${stat(g && g.prev !== undefined ? gtxt(g.prev) : "—", "比前一次", g && g.prev < 0 ? "down" : "up")}
+        ${stat(wc ? `${gtxt(wc.d)}` : "—", wc ? `7 天（${pct(wc.r)}）` : "7 天", wc && wc.d < 0 ? (wc.r <= -0.05 ? "bad" : "down") : "up")}
+        ${stat(m30 !== null ? gtxt(m30) : "—", "30 天", m30 < 0 ? "down" : "up")}
+      </div>
+    </div>
+    <div class="card">
+      <h2>體重曲線</h2>
+      <div class="spans">${[["14", "2 週"], ["28", "4 週"], ["91", "3 個月"], ["all", "全部"]]
+        .map(([v, t], i) => `<button data-span="${v}" class="${i === 0 ? "on" : ""}">${t}</button>`).join("")}</div>
+      <div class="chartbox"><canvas id="pigChart"></canvas></div>
+      <div class="sub" id="bandNote"></div>
+    </div>
+    ${p.photos.length ? `<div class="card"><h2>今天的照片</h2><div class="photos">${p.photos.map((ph, i) =>
+      `<img src="${ph.url}" alt="" data-i="${i}" title="${ph.grams} g">`).join("")}</div></div>` : ""}`;
+  el.querySelector("#back").onclick = () => { location.hash = ""; };
+  el.querySelectorAll(".spans button").forEach(b => b.onclick = () => {
+    el.querySelectorAll(".spans button").forEach(x => x.classList.toggle("on", x === b)); drawPigChart(p, b.dataset.span); });
+  el.querySelectorAll(".photos img").forEach(img => img.onclick = () => openPhoto(p, p.photos[+img.dataset.i]));
+  drawPigChart(p, "14");
 }
 
 function drawPigChart(p, span) {
-  const box = document.getElementById(`chart-${p.id}`);
-  if (!box) return;
-  charts.get(p.id)?.destroy();
-  const back = { "7": 7, "28": 28, "91": 91, "all": null }[span];
+  pigChart?.destroy();
+  const back = { "14": 14, "28": 28, "91": 91, "all": null }[span];
   const from = back ? new Date(startOfDay(new Date()) - (back - 1) * DAY) : new Date(0);
-  const days = p.days.filter(d => d.day >= from);
-  const ctx = box.querySelector("canvas");
-  if (days.length < 2) { box.innerHTML = `<div class="sub">這段期間少於 2 筆紀錄。</div><canvas></canvas>`; return; }
-  const accent = css("--accent");
-  const cfg = span === "7"
-    ? { labels: days.map(d => fmtDate(d.day)), datasets: [{ label: "體重", data: days.map(d => d.grams), borderColor: accent, backgroundColor: accent }] }
-    : (() => { const w = weeklyStats(days); return { labels: w.map(x => fmtDate(x.week)), datasets: [
-        { label: "最高", data: w.map(x => x.max), borderColor: "transparent", backgroundColor: accent + "33", fill: "+1", pointRadius: 0 },
-        { label: "最低", data: w.map(x => x.min), borderColor: "transparent", pointRadius: 0 },
-        { label: "每週平均", data: w.map(x => Math.round(x.mean)), borderColor: accent, backgroundColor: accent } ] }; })();
-  charts.set(p.id, new Chart(ctx, { type: "line", data: cfg,
-    options: { maintainAspectRatio: false, plugins: { legend: { display: span !== "7", labels: { color: css("--text"), filter: i => i.text === "每週平均" } } },
-      scales: { x: { ticks: { color: css("--muted") } }, y: { ticks: { color: css("--muted") }, title: { display: true, text: "g", color: css("--muted") } } } } }));
+  const days = p.days.filter(d => d.day >= from), band = normalBand(p.days), accent = css("--accent"), good = css("--good");
+  const note = document.getElementById("bandNote");
+  if (days.length < 2) { note.textContent = "這段期間少於 2 筆紀錄。"; return; }
+  const labels = days.map(d => fmtDate(d.day)), sets = [];
+  if (band) {
+    sets.push({ label: "正常上限", data: days.map(() => Math.round(band.hi)), borderColor: "transparent", backgroundColor: good + "22", fill: "+1", pointRadius: 0 });
+    sets.push({ label: "正常下限", data: days.map(() => Math.round(band.lo)), borderColor: "transparent", pointRadius: 0 });
+  }
+  sets.push({ label: "體重", data: days.map(d => d.grams), borderColor: accent, backgroundColor: accent,
+    pointBackgroundColor: days.map(d => band && d.grams < band.lo ? css("--watch") : accent), tension: 0.25 });
+  pigChart = new Chart(document.getElementById("pigChart"), { type: "line", data: { labels, datasets: sets },
+    options: chartOptions({ plugins: { legend: { display: false } } }) });
+  note.textContent = band ? `綠色帶 = 牠最近兩週的正常範圍（${Math.round(band.lo)}–${Math.round(band.hi)} g），低於色帶的點會變成橘色。` : "";
 }
 
-function render() {
-  const shown = pigs.filter(p => filter === "all" || p.sex === filter)
-    .sort((a, b) => ["alert", "watch", "noData", "good"].indexOf(a.health.status) - ["alert", "watch", "noData", "good"].indexOf(b.health.status) || a.name.localeCompare(b.name, "zh-Hant"));
-  const count = s => pigs.filter(p => p.health.status === s).length;
-  document.getElementById("summary").innerHTML = ["alert", "watch", "good", "noData"]
-    .map(s => `<div><b>${count(s)}</b>${STATUS[s][0]} ${STATUS[s][1]}</div>`).join("");
-  const list = document.getElementById("list");
-  list.innerHTML = shown.map(p => {
-    const h = p.health, [emo, lab] = STATUS[h.status], sym = p.sex === "male" ? "♂" : "♀";
-    const g = p.gain, gtxt = d => d === 0 ? "±0 g" : `${d > 0 ? "+" : ""}${d} g`;
-    const gainHtml = !g ? "" : g.prev !== undefined
-      ? `<div class="gain ${g.ratio <= -0.03 ? "bad" : g.prev > 0 ? "up" : g.prev < 0 ? "down" : ""}">${g.prev > 0 ? "▲" : g.prev < 0 ? "▼" : "＝"} ${gtxt(g.prev)}${g.prev ? ` (${pct(g.ratio)})` : ""}</div>`
-      : `<div class="sub">第一筆</div>`;
-    const weekHtml = g && g.week !== undefined ? `<div class="sub">7 天 ${gtxt(g.week)}</div>` : "";
-    const latest = g ? `<b>${g.latest.grams}</b> g${gainHtml}<div class="sub">${fmtDate(g.latest.at)}</div>` : `<div class="sub">未秤</div>`;
-    const photosHtml = p.photos.length ? `<div class="photos"><span class="cap">今天</span>${p.photos.map((ph, i) =>
-      `<img src="${ph.url}" alt="" data-i="${i}" title="${ph.grams} g">`).join("")}</div>` : "";
-    const av = p.avatar ? `<img class="avatar" src="${p.avatar}" alt="">` : `<div class="avatar">${p.name.slice(0, 1)}</div>`;
-    return `<div class="pig" data-id="${p.id}">
-      <div class="top">${av}<div><div class="name">${p.name} <span class="${p.sex}">${sym}</span></div>
-        <div class="sub">${p.age ? p.age.text : ""}</div>${weekHtml}
-        ${p.tagsAppearance.length ? `<div class="tags">${p.tagsAppearance.map(t => "#" + t).join(" ")}</div>` : ""}</div><div class="weight">${latest}</div></div>
-      <span class="chip s-${h.status}">${emo} ${lab}</span>
-      ${h.reasons.length && h.status !== "noData" ? `<div class="reasons">${h.reasons.join("・")}</div>` : ""}
-      ${photosHtml}
-      <div class="detail"></div></div>`;
-  }).join("") || `<div class="sub">沒有符合的天竺鼠。</div>`;
-  list.querySelectorAll(".pig").forEach(el => el.addEventListener("click", e => {
-    if (e.target.closest(".spans")) return;
-    const img = e.target.closest(".photos img");
-    if (img) {
-      const p = pigs.find(x => x.id === el.dataset.id), ph = p.photos[+img.dataset.i], v = document.getElementById("viewer");
-      v.querySelector("img").src = ph.url;
-      v.querySelector("div").textContent = `${p.name}・${ph.at.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })}・${ph.grams} g`;
-      v.classList.add("on");
-      return;
-    }
-    const p = pigs.find(x => x.id === el.dataset.id), open = el.classList.toggle("open"), d = el.querySelector(".detail");
-    if (!open) { charts.get(p.id)?.destroy(); d.innerHTML = ""; return; }
-    d.innerHTML = `<div class="spans">${[["7", "7 天"], ["28", "4 週"], ["91", "3 個月"], ["all", "全部"]]
-      .map(([v, t], i) => `<button data-span="${v}" class="${i === 0 ? "on" : ""}">${t}</button>`).join("")}</div>
-      <div class="chartbox" id="chart-${p.id}"><canvas></canvas></div>`;
-    d.querySelectorAll(".spans button").forEach(b => b.addEventListener("click", () => {
-      d.querySelectorAll(".spans button").forEach(x => x.classList.toggle("on", x === b)); drawPigChart(p, b.dataset.span);
-    }));
-    drawPigChart(p, "7");
-  }));
+function openPhoto(p, ph) {
+  const v = document.getElementById("viewer");
+  v.querySelector("img").src = ph.url;
+  v.querySelector("div").textContent = `${p.name}・${ph.at.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })}・${ph.grams} g`;
+  v.classList.add("on");
 }
 
+function route() {
+  const id = new URLSearchParams(location.hash.slice(1)).get("pig"), p = pigs.find(x => x.id === id);
+  document.getElementById("home").classList.toggle("hidden", !!p);
+  document.getElementById("detail").classList.toggle("hidden", !p);
+  if (p) { renderDetail(p); document.title = `${p.name}｜天竺鼠體重房`; window.scrollTo(0, 0); }
+  else { pigChart?.destroy(); document.title = "天竺鼠體重房"; }
+}
+
+const openPig = id => { location.hash = `pig=${encodeURIComponent(id)}`; };
+document.getElementById("list").addEventListener("click", e => { const el = e.target.closest(".pig"); if (el) openPig(el.dataset.id); });
+document.getElementById("heat").addEventListener("click", e => { const el = e.target.closest(".hname[data-id]"); if (el) openPig(el.dataset.id); });
+["rankUp", "rankDown"].forEach(id => document.getElementById(id).addEventListener("click", e => { const el = e.target.closest(".r"); if (el) openPig(el.dataset.id); }));
 document.getElementById("viewer").addEventListener("click", e => e.currentTarget.classList.remove("on"));
-
-document.getElementById("tabs").addEventListener("click", e => {
+document.getElementById("sexSeg").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  filter = b.dataset.f;
-  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b));
-  render();
-});
+  filter = b.dataset.f; document.querySelectorAll("#sexSeg button").forEach(x => x.classList.toggle("on", x === b)); renderList(); });
+document.getElementById("search").addEventListener("input", e => { query = e.target.value; renderList(); });
+document.getElementById("sort").addEventListener("change", e => { sortBy = e.target.value; renderList(); });
+window.addEventListener("hashchange", route);
 
 (async () => {
   try {
@@ -403,10 +600,9 @@ document.getElementById("tabs").addEventListener("click", e => {
     const last = weightRows.length ? new Date(weightRows[weightRows.length - 1].measured_at) : null;
     document.getElementById("updated").textContent =
       `${pigs.length} 隻・最近一次秤重：${last ? last.toLocaleString("zh-TW", { dateStyle: "medium", timeStyle: "short" }) : "—"}`;
-    drawGroup();
-    render();
+    renderOverview(); renderHeatmap(); renderRanking(); drawGroup(); renderList(); route();
   } catch (e) {
-    document.getElementById("updated").innerHTML = `<span class="err">讀取失敗：${e.message}</span>`;
+    document.getElementById("updated").innerHTML = `<span class="err">讀取失敗：${esc(e.message)}</span>`;
   }
 })();
 </script>
