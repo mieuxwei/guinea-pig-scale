@@ -106,6 +106,17 @@
   footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
   .err { color: var(--alert); }
   .hidden { display: none; }
+  .fold > h2 { display: flex; align-items: center; cursor: pointer; user-select: none; margin: 0; }
+  .fold > h2::after { content: "▾"; margin-left: auto; color: var(--muted); transition: transform .2s; }
+  .fold.collapsed > h2::after { transform: rotate(-90deg); }
+  .fold > .body { margin-top: 10px; }
+  .fold.collapsed > .body { display: none; }
+  .more { border: 1px solid var(--line); background: transparent; color: var(--accent); border-radius: 8px;
+          padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; margin-top: 8px; }
+  .pig.open { grid-column: 1 / -1; cursor: default; border-color: var(--accent); }
+  .pig.open .top { cursor: pointer; }
+  .pig .inline { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .pig .fold-hint { font-size: 12px; color: var(--muted); margin-left: 6px; }
   /* 深色模式：彩色半透明底疊在深色上會變成棕色 → 改成中性灰底＋彩色外框 */
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) .pill.on, :root:not([data-theme="light"]) .chip { background: var(--soft); border: 1px solid currentColor; }
@@ -143,24 +154,30 @@
       <div class="pills" id="pills"></div>
     </div>
 
-    <div class="card">
+    <div class="card fold" data-fold="heat">
       <h2>最近 3 週・每天的體重變化</h2>
-      <div class="heat" id="heat"></div>
-      <div class="legend">
-        <span><i class="c-up"></i>增加</span><span><i class="c-flat"></i>持平</span>
-        <span><i class="c-dip"></i>降 2–5%</span><span><i class="c-drop"></i>降 5% 以上</span>
-        <span><i style="background:var(--soft)"></i>沒秤</span>
+      <div class="body">
+        <div class="heat" id="heat"></div>
+        <button class="more" id="heatMore"></button>
+        <div class="legend">
+          <span><i class="c-up"></i>增加</span><span><i class="c-flat"></i>持平</span>
+          <span><i class="c-dip"></i>降 2–5%</span><span><i class="c-drop"></i>降 5% 以上</span>
+          <span><i style="background:var(--soft)"></i>沒秤</span>
+        </div>
       </div>
     </div>
 
-    <div class="two">
-      <div class="card rank"><h2>7 天增加最多</h2><div id="rankUp"></div></div>
-      <div class="card rank"><h2>7 天減少最多</h2><div id="rankDown"></div></div>
+    <div class="card fold" data-fold="rank">
+      <h2>7 天增減排行</h2>
+      <div class="body two">
+        <div class="rank"><div class="sub">增加最多</div><div id="rankUp"></div></div>
+        <div class="rank"><div class="sub">減少最多</div><div id="rankDown"></div></div>
+      </div>
     </div>
 
-    <div class="card">
+    <div class="card fold" data-fold="group">
       <h2>公／母每週平均體重（近 12 週）</h2>
-      <div class="chartbox"><canvas id="group"></canvas></div>
+      <div class="body"><div class="chartbox"><canvas id="group"></canvas></div></div>
     </div>
 
     <div class="tools">
@@ -177,7 +194,6 @@
     <div class="grid" id="list"></div>
   </section>
 
-  <section id="detail" class="hidden"></section>
 
   <div id="viewer"><figure style="margin:0"><img alt=""><div></div></figure></div>
 
@@ -346,7 +362,9 @@ async function avatarURL(key) {
   } catch { return null; }
 }
 
-let pigs = [], filter = "all", query = "", sortBy = "status", groupChart = null, pigChart = null;
+let pigs = [], filter = "all", query = "", sortBy = "status", groupChart = null, pigChart = null, openId = null, heatAll = false;
+const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+                set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const gtxt = d => d === 0 ? "±0 g" : `${d > 0 ? "+" : ""}${d} g`;
@@ -405,7 +423,19 @@ function renderHeatmap() {
   const today = startOfDay(new Date()), N = 21;
   const dates = Array.from({ length: N }, (_, i) => new Date(today - (N - 1 - i) * DAY));
   const head = `<div class="hrow"><div class="hname"></div>${dates.map(d => `<div class="hday">${d.getDate()}</div>`).join("")}</div>`;
-  const rows = pigs.slice().sort((a, b) => a.name.localeCompare(b.name, "zh-Hant")).map(p => {
+  // 預設只列「最近 7 天曾一次降 3% 以上、或 2 天以上沒秤」的豬，按按鈕看全部（一天起伏 2–3% 是正常的）
+  const recent = new Date(today - 6 * DAY);
+  const needs = p => {
+    const d = p.days; if (!d.length) return true;
+    if (today - d[d.length - 1].day >= 2 * DAY) return true;
+    return d.some((x, i) => i > 0 && x.day >= recent && (x.grams - d[i - 1].grams) / d[i - 1].grams <= -0.03);
+  };
+  const flagged = pigs.filter(needs);
+  const list = heatAll || !flagged.length ? pigs : flagged;
+  const more = document.getElementById("heatMore");
+  more.textContent = heatAll ? `只看需要留意的（${flagged.length} 隻）▴` : `顯示全部 ${pigs.length} 隻 ▾`;
+  more.classList.toggle("hidden", !flagged.length || flagged.length === pigs.length);
+  const rows = list.slice().sort((a, b) => a.name.localeCompare(b.name, "zh-Hant")).map(p => {
     const by = new Map(p.days.map(d => [d.day.getTime(), d.grams]));
     const cells = dates.map(d => {
       const g = by.get(d.getTime());
@@ -418,7 +448,8 @@ function renderHeatmap() {
     return `<div class="hrow"><div class="hname" data-id="${p.id}">${esc(p.name)}</div>${cells}</div>`;
   }).join("");
   const heat = document.getElementById("heat");
-  heat.innerHTML = head + rows;
+  heat.innerHTML = head + rows + (!heatAll && flagged.length && flagged.length < pigs.length
+    ? `<div class="sub" style="margin-top:6px">只列出最近 7 天曾降 3% 以上、或 2 天以上沒秤的 ${flagged.length} 隻。</div>` : "");
   heat.scrollLeft = heat.scrollWidth;   // 手機上預設捲到最近幾天
 }
 
@@ -486,7 +517,7 @@ function renderList() {
       ? `<div class="gain ${g.ratio <= -0.03 ? "bad" : g.prev > 0 ? "up" : g.prev < 0 ? "down" : ""}">${g.prev > 0 ? "▲" : g.prev < 0 ? "▼" : "＝"} ${gtxt(g.prev)}</div>`
       : `<div class="sub">第一筆</div>`;
     const latest = g ? `<b>${g.latest.grams}</b> g${gainHtml}` : `<div class="sub">未秤</div>`;
-    return `<div class="pig" data-id="${p.id}">
+    return `<div class="pig ${p.id === openId ? "open" : ""}" data-id="${p.id}">
       <div class="top">${avatarHtml(p)}<div><div class="name">${esc(p.name)} <span class="${p.sex}">${sym}</span></div>
         <div class="sub">${p.age ? p.age.text : ""}</div>
         ${p.tagsAppearance.length ? `<div class="tags">${p.tagsAppearance.map(t => "#" + esc(t)).join(" ")}</div>` : ""}</div>
@@ -494,54 +525,56 @@ function renderList() {
       ${sparkline(p)}
       <span class="chip s-${h.status}">${emo} ${lab}</span>
       ${h.reasons.length && h.status !== "noData" ? `<div class="reasons">${h.reasons.map(esc).join("・")}</div>` : ""}
+      <div class="inline"${p.id === openId ? "" : " hidden"}></div>
     </div>`;
   }).join("") || `<div class="sub">沒有符合的天竺鼠。</div>`;
+  const open = openId && pigs.find(x => x.id === openId);
+  if (open) { const el = document.querySelector(`.pig[data-id="${openId}"] .inline`); if (el) renderInline(el, open); }
 }
 
-// ---- 個人頁（#pig=<id>） ----
-function renderDetail(p) {
-  const h = p.health, [emo, lab] = STATUS[h.status], g = p.gain, wc = weekChange(p);
-  const d = p.days, month = d.filter(x => x.day >= new Date(d.length ? d[d.length - 1].day - 30 * DAY : 0));
+// ---- 卡片展開：個人詳細資料（再點卡片上方或「收合」就縮回去） ----
+function renderInline(el, p) {
+  const g = p.gain, wc = weekChange(p), d = p.days;
+  const month = d.filter(x => x.day >= new Date(d.length ? d[d.length - 1].day - 30 * DAY : 0));
   const m30 = month.length >= 2 ? month[month.length - 1].grams - month[0].grams : null;
   const stat = (v, t, cls = "") => `<div class="stat"><b class="${cls}">${v}</b><span>${t}</span></div>`;
-  const el = document.getElementById("detail");
-  el.innerHTML = `<button class="back" id="back">‹ 回到全部</button>
-    <div class="card">
-      <div class="hero">${avatarHtml(p)}<div>
-        <div class="name" style="font-size:24px">${esc(p.name)} <span class="${p.sex}">${p.sex === "male" ? "♂" : "♀"}</span></div>
-        <div class="sub">${p.age ? p.age.text : ""}${p.days.length ? `・共 ${p.days.length} 天紀錄` : ""}</div>
-        ${p.tagsAppearance.length ? `<div class="tags">${p.tagsAppearance.map(t => "#" + esc(t)).join(" ")}</div>` : ""}
-        <span class="chip s-${h.status}">${emo} ${lab}</span></div></div>
-      ${h.reasons.length && h.status !== "noData" ? `<div class="reasons">${h.reasons.map(esc).join("・")}</div>` : ""}
-      <div class="stats">
+  el.innerHTML = `<div class="stats" style="margin-top:0">
         ${stat(g ? `${g.latest.grams} g` : "—", g ? `最新（${fmtDate(g.latest.at)}）` : "最新")}
         ${stat(g && g.prev !== undefined ? gtxt(g.prev) : "—", "比前一次", g && g.prev < 0 ? "down" : "up")}
-        ${stat(wc ? `${gtxt(wc.d)}` : "—", wc ? `7 天（${pct(wc.r)}）` : "7 天", wc && wc.d < 0 ? (wc.r <= -0.05 ? "bad" : "down") : "up")}
+        ${stat(wc ? gtxt(wc.d) : "—", wc ? `7 天（${pct(wc.r)}）` : "7 天", wc && wc.d < 0 ? (wc.r <= -0.05 ? "bad" : "down") : "up")}
         ${stat(m30 !== null ? gtxt(m30) : "—", "30 天", m30 < 0 ? "down" : "up")}
       </div>
-    </div>
-    <div class="card">
-      <h2>體重曲線</h2>
-      <div class="spans">${[["14", "2 週"], ["28", "4 週"], ["91", "3 個月"], ["all", "全部"]]
+      <div class="spans" style="margin-top:12px">${[["14", "2 週"], ["28", "4 週"], ["91", "3 個月"], ["all", "全部"]]
         .map(([v, t], i) => `<button data-span="${v}" class="${i === 0 ? "on" : ""}">${t}</button>`).join("")}</div>
-      <div class="chartbox"><canvas id="pigChart"></canvas></div>
-      <div class="sub" id="bandNote"></div>
-    </div>
-    ${p.photos.length ? `<div class="card"><h2>今天的照片</h2><div class="photos">${p.photos.map((ph, i) =>
-      `<img src="${ph.url}" alt="" data-i="${i}" title="${ph.grams} g">`).join("")}</div></div>` : ""}`;
-  el.querySelector("#back").onclick = () => { location.hash = ""; };
+      <div class="chartbox"><canvas class="pigChart"></canvas></div>
+      <div class="sub bandNote"></div>
+      ${p.photos.length ? `<div class="photos"><span class="cap">今天</span>${p.photos.map((ph, i) =>
+        `<img src="${ph.url}" alt="" data-i="${i}" title="${ph.grams} g">`).join("")}</div>` : ""}
+      <button class="more collapse">收合 ▴</button>`;
   el.querySelectorAll(".spans button").forEach(b => b.onclick = () => {
-    el.querySelectorAll(".spans button").forEach(x => x.classList.toggle("on", x === b)); drawPigChart(p, b.dataset.span); });
+    el.querySelectorAll(".spans button").forEach(x => x.classList.toggle("on", x === b)); drawPigChart(p, b.dataset.span, el); });
   el.querySelectorAll(".photos img").forEach(img => img.onclick = () => openPhoto(p, p.photos[+img.dataset.i]));
-  drawPigChart(p, "14");
+  el.querySelector(".collapse").onclick = () => togglePig(p.id);
+  drawPigChart(p, "14", el);
 }
 
-function drawPigChart(p, span) {
+function togglePig(id, scroll) {
+  pigChart?.destroy(); pigChart = null;
+  openId = openId === id ? null : id;
+  history.replaceState(null, "", openId ? `#pig=${encodeURIComponent(openId)}` : location.pathname);
+  renderList();
+  if (openId) {
+    const card = document.querySelector(`.pig[data-id="${openId}"]`);
+    if (card && scroll) card.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function drawPigChart(p, span, el) {
   pigChart?.destroy();
   const back = { "14": 14, "28": 28, "91": 91, "all": null }[span];
   const from = back ? new Date(startOfDay(new Date()) - (back - 1) * DAY) : new Date(0);
   const days = p.days.filter(d => d.day >= from), band = normalBand(p.days), accent = css("--accent"), good = css("--good");
-  const note = document.getElementById("bandNote");
+  const note = el.querySelector(".bandNote");
   if (days.length < 2) { note.textContent = "這段期間少於 2 筆紀錄。"; return; }
   const labels = days.map(d => fmtDate(d.day)), sets = [];
   if (band) {
@@ -549,10 +582,12 @@ function drawPigChart(p, span) {
     sets.push({ label: "正常下限", data: days.map(() => Math.round(band.lo)), borderColor: "transparent", pointRadius: 0 });
   }
   sets.push({ label: "體重", data: days.map(d => d.grams), borderColor: accent, backgroundColor: accent,
-    pointBackgroundColor: days.map(d => band && d.grams < band.lo ? css("--watch") : accent), tension: 0.25 });
-  pigChart = new Chart(document.getElementById("pigChart"), { type: "line", data: { labels, datasets: sets },
+    pointBackgroundColor: days.map(d => band && d.grams < band.lo ? css("--alert") : accent),
+    pointBorderColor: days.map(d => band && d.grams < band.lo ? css("--alert") : accent),
+    pointRadius: days.map(d => band && d.grams < band.lo ? 5 : 3), tension: 0.25 });
+  pigChart = new Chart(el.querySelector(".pigChart"), { type: "line", data: { labels, datasets: sets },
     options: chartOptions({ plugins: { legend: { display: false } } }) });
-  note.textContent = band ? `綠色帶 = 牠最近兩週的正常範圍（${Math.round(band.lo)}–${Math.round(band.hi)} g），低於色帶的點會變成橘色。` : "";
+  note.textContent = band ? `綠色帶 = 牠最近兩週的正常範圍（${Math.round(band.lo)}–${Math.round(band.hi)} g），低於色帶的點會變成紅色。` : "";
 }
 
 function openPhoto(p, ph) {
@@ -562,25 +597,38 @@ function openPhoto(p, ph) {
   v.classList.add("on");
 }
 
-function route() {
-  const id = new URLSearchParams(location.hash.slice(1)).get("pig"), p = pigs.find(x => x.id === id);
-  document.getElementById("home").classList.toggle("hidden", !!p);
-  document.getElementById("detail").classList.toggle("hidden", !p);
-  if (p) { renderDetail(p); document.title = `${p.name}｜天竺鼠體重房`; window.scrollTo(0, 0); }
-  else { pigChart?.destroy(); document.title = "天竺鼠體重房"; }
+// 熱力圖、排行點名字：清掉搜尋與篩選，展開那隻的卡片並捲過去
+function openPig(id) {
+  if (query || filter !== "all") {
+    query = ""; filter = "all"; document.getElementById("search").value = "";
+    document.querySelectorAll("#sexSeg button").forEach(x => x.classList.toggle("on", x.dataset.f === "all"));
+  }
+  if (openId === id) { document.querySelector(`.pig[data-id="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+  togglePig(id, true);
 }
-
-const openPig = id => { location.hash = `pig=${encodeURIComponent(id)}`; };
-document.getElementById("list").addEventListener("click", e => { const el = e.target.closest(".pig"); if (el) openPig(el.dataset.id); });
+document.getElementById("list").addEventListener("click", e => {
+  const el = e.target.closest(".pig"); if (!el) return;
+  if (el.classList.contains("open") && !e.target.closest(".top")) return;   // 展開後只有點上方（頭貼、名字）才收合
+  togglePig(el.dataset.id);
+});
 document.getElementById("heat").addEventListener("click", e => { const el = e.target.closest(".hname[data-id]"); if (el) openPig(el.dataset.id); });
 ["rankUp", "rankDown"].forEach(id => document.getElementById(id).addEventListener("click", e => { const el = e.target.closest(".r"); if (el) openPig(el.dataset.id); }));
+document.getElementById("heatMore").addEventListener("click", () => { heatAll = !heatAll; renderHeatmap(); });
+// 可收合的區塊：記住上次的開合
+document.querySelectorAll(".fold").forEach(f => {
+  const k = "fold:" + f.dataset.fold;
+  if (store.get(k) === "1") f.classList.add("collapsed");
+  f.querySelector("h2").addEventListener("click", () => {
+    const c = f.classList.toggle("collapsed"); store.set(k, c ? "1" : "0");
+    if (!c && f.dataset.fold === "group") groupChart?.resize();
+  });
+});
 document.getElementById("viewer").addEventListener("click", e => e.currentTarget.classList.remove("on"));
 document.getElementById("sexSeg").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   filter = b.dataset.f; document.querySelectorAll("#sexSeg button").forEach(x => x.classList.toggle("on", x === b)); renderList(); });
 document.getElementById("search").addEventListener("input", e => { query = e.target.value; renderList(); });
 document.getElementById("sort").addEventListener("change", e => { sortBy = e.target.value; renderList(); });
-window.addEventListener("hashchange", route);
 
 (async () => {
   try {
@@ -600,7 +648,10 @@ window.addEventListener("hashchange", route);
     const last = weightRows.length ? new Date(weightRows[weightRows.length - 1].measured_at) : null;
     document.getElementById("updated").textContent =
       `${pigs.length} 隻・最近一次秤重：${last ? last.toLocaleString("zh-TW", { dateStyle: "medium", timeStyle: "short" }) : "—"}`;
-    renderOverview(); renderHeatmap(); renderRanking(); drawGroup(); renderList(); route();
+    openId = new URLSearchParams(location.hash.slice(1)).get("pig");
+    if (!pigs.some(p => p.id === openId)) openId = null;
+    renderOverview(); renderHeatmap(); renderRanking(); drawGroup(); renderList();
+    if (openId) document.querySelector(`.pig[data-id="${openId}"]`)?.scrollIntoView({ block: "start" });
   } catch (e) {
     document.getElementById("updated").innerHTML = `<span class="err">讀取失敗：${esc(e.message)}</span>`;
   }
